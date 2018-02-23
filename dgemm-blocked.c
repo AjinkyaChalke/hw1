@@ -64,7 +64,7 @@ static void do_block (int lda, int M, int N, int K, double* A, double* B, double
       {
       /* Compute C(i,j) */
         double cij = C[i+j*lda];
-        for (int k = 0; k < K; k += 2){
+        for (int k = 0; k < K; k += 8){
 
           vec1A = _mm256_load_pd (&a[k+i*BLOCK_SIZE]);
           vec1B = _mm256_loadu_pd (&B[k+j*lda]);
@@ -73,7 +73,7 @@ static void do_block (int lda, int M, int N, int K, double* A, double* B, double
           vec1C = _mm256_mul_pd(vec1A, vec1B);
           vec2C = _mm256_mul_pd(vec2A, vec2B);
           vecCtmp = _mm256_add_pd(vec1C,vec2C);
-          
+
           _mm256_store_pd(&temp[0], vecCtmp);
           
           cij += temp[0];
