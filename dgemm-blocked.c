@@ -41,11 +41,21 @@ static void do_block (int lda, int M, int N, int K, double* A, double* B, double
 
  static void do_block_fast(int lda, int M, int N, int K, double* A, double* B, double* C)
  {
-  static double a[BLOCK_SIZE*BLOCK_SIZE] __attribute__ ((aligned (16)));
-      //  make a local aligned copy of A's block
-  for( int j = 0; j < K; j++ ) 
-    for( int i = 0; i < M; i++ )
-      a[i+j*BLOCK_SIZE] = A[i+j*lda];
+  static double a[BLOCK_SIZE*BLOCK_SIZE] __attribute__ ((aligned (32)));
+  static double temp[4] __attribute__ ((aligned (32))); 
+  
+  //  make a local aligned copy of A's block
+  for( int i = 0; i < M; i++ )
+    for( int j = 0; j < K; j++ )
+      a[j+i*BLOCK_SIZE] = A[i+j*lda];
+
+  __m256d vec1A;
+  __m256d vec1B;
+  __m256d vec1C;
+  __m256d vec2A;
+  __m256d vec2B;
+  __m256d vec2C;
+  __m256d vecCtmp;
 
   /* For each row i of A */
     for (int i = 0; i < M; ++i)
@@ -54,8 +64,23 @@ static void do_block (int lda, int M, int N, int K, double* A, double* B, double
       {
       /* Compute C(i,j) */
         double cij = C[i+j*lda];
-        for (int k = 0; k < K; ++k)
-          cij += a[i+k*BLOCK_SIZE] * B[k+j*lda];
+        for (int k = 0; k < K; k += 2){
+
+          vec1A = _mm256_load_pd (&a[k+i*BLOCK_SIZE]);
+          vec1B = _mm256_loadu_pd (&B[k+j*lda]);
+          vec2A = _mm256_load_pd (&a[k+4+i*BLOCK_SIZE]);
+          vec2B = _mm256_loadu_pd (&B[k+4+j*lda]);
+          vec1C = _mm256_mul_pd(vec1A, vec1B);
+          vec2C = _mm256_mul_pd(vec2A, vec2B);
+          vecCtmp = _mm256_add_pd(vec1C,vec2C);
+          
+          _mm256_store_pd(&temp[0], vecCtmp);
+          
+          cij += temp[0];
+          cij += temp[1];
+          cij += temp[2];
+          cij += temp[3];
+        }
         C[i+j*lda] = cij;
       }
     }
