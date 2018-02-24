@@ -1,5 +1,2 @@
 *.o
-My*y
-benchmark-blas
-benchmark-blocked
-benchmark-naive
+My*
