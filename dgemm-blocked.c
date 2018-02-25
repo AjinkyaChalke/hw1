@@ -7,7 +7,7 @@ COMPILER= gnu
  
 CC = cc
 OPT = -O3
-CFLAGS = -Wall -std=gnu99 $(OPT)
+CFLAGS = -Wall -std=gnu99 -mavx $(OPT)
 MKLROOT = /opt/intel/composer_xe_2013.1.117/mkl
 LDLIBS = -lrt -Wl,--start-group $(MKLROOT)/lib/intel64/libmkl_intel_lp64.a $(MKLROOT)/lib/intel64/libmkl_sequential.a $(MKLROOT)/lib/intel64/libmkl_core.a -Wl,--end-group -lpthread -lm
 
@@ -20,6 +20,7 @@ const char* dgemm_desc = "Simple blocked dgemm.";
 #endif
 
 #define min(a,b) (((a)<(b))?(a):(b))
+#include "immintrin.h"
 
 /* This auxiliary subroutine performs a smaller dgemm operation
  *  C := C + A * B
@@ -49,6 +50,14 @@ static void do_block (int lda, int M, int N, int K, double* A, double* B, double
     for( int j = 0; j < K; j++ )
       a[j+i*BLOCK_SIZE] = A[i+j*lda];
 
+  __m256d vec1A;
+  __m256d vec1B;
+  __m256d vec2A;
+  __m256d vec2B;
+  __m256d vec1C;
+  __m256d vec2C;
+  __m256d vecCtmp;
+
   /* For each row i of A */
     for (int i = 0; i < M; ++i)
     /* For each column j of B */ 
@@ -58,13 +67,13 @@ static void do_block (int lda, int M, int N, int K, double* A, double* B, double
         double cij = C[i+j*lda];
         for (int k = 0; k < K; k += 8){
 
-          __m256d vec1A = _mm256_load_pd (&a[k+i*BLOCK_SIZE]);
-          __m256d vec1B = _mm256_loadu_pd (&B[k+j*lda]);
-          __m256d vec2A = _mm256_load_pd (&a[k+4+i*BLOCK_SIZE]);
-          __m256d vec2B = _mm256_loadu_pd (&B[k+4+j*lda]);
-          __m256d vec1C = _mm256_mul_pd(vec1A, vec1B);
-          __m256d vec2C = _mm256_mul_pd(vec2A, vec2B);
-          __m256d vecCtmp = _mm256_add_pd(vec1C,vec2C);
+          vec1A = _mm256_load_pd (&a[k+i*BLOCK_SIZE]);
+          vec1B = _mm256_loadu_pd (&B[k+j*lda]);
+          vec2A = _mm256_load_pd (&a[k+4+i*BLOCK_SIZE]);
+          vec2B = _mm256_loadu_pd (&B[k+4+j*lda]);
+          vec1C = _mm256_mul_pd(vec1A, vec1B);
+          vec2C = _mm256_mul_pd(vec2A, vec2B);
+          vecCtmp = _mm256_add_pd(vec1C,vec2C);
 
           _mm256_store_pd(&temp[0], vecCtmp);
           
