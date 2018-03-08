@@ -49,7 +49,7 @@ static void do_block (int lda, int M, int N, int K, double* A, double* B, double
 static void do_block_fast(int lda, int M, int N, int K, double* A, double* B, double* C){
   static double a[BLOCK_SIZE*BLOCK_SIZE] __attribute__ ((aligned (32)));
   static double temp[4] __attribute__ ((aligned (32))); 
-  
+
   __m256d vec1A;
   __m256d vec1B;
   __m256d vec2A;
@@ -65,18 +65,20 @@ static void do_block_fast(int lda, int M, int N, int K, double* A, double* B, do
 
   /* For each row i of A */
   for (int i = 0; i < M; ++i)
-  /* For each column j of B */ 
+  /* For each column j of B */
+
+    register long iBS = i*BLOCK_SIZE; 
     for (int j = 0; j < N; ++j) 
     {
     /* Compute C(i,j) */
       double cij = C[i+j*lda];
-      
+      register long jLda= j*lda;
       for (int k = 0; k < K; k += 8){
 
-        vec1A = _mm256_load_pd (&a[k+i*BLOCK_SIZE]);
-        vec1B = _mm256_loadu_pd (&B[k+j*lda]);
-        vec2A = _mm256_load_pd (&a[k+4+i*BLOCK_SIZE]);
-        vec2B = _mm256_loadu_pd (&B[k+4+j*lda]);
+        vec1A = _mm256_load_pd (&a[k+iBS]);
+        vec1B = _mm256_loadu_pd (&B[k+jLda]);
+        vec2A = _mm256_load_pd (&a[k+4+iBS]);
+        vec2B = _mm256_loadu_pd (&B[k+4+jLda]);
         vec1C = _mm256_mul_pd(vec1A, vec1B);
         vec2C = _mm256_mul_pd(vec2A, vec2B);
 
@@ -89,7 +91,7 @@ static void do_block_fast(int lda, int M, int N, int K, double* A, double* B, do
         cij += temp[2];
         cij += temp[3];
       }
-      C[i+j*lda] = cij;
+      C[i+jLda] = cij;
     }
 }
 
