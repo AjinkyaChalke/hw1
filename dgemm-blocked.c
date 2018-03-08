@@ -64,9 +64,8 @@ static void do_block_fast(int lda, int M, int N, int K, double* A, double* B, do
       a[j+i*BLOCK_SIZE] = A[i+j*lda];
 
   /* For each row i of A */
-  for (int i = 0; i < M; ++i)
+  for (int i = 0; i < M; ++i){
   /* For each column j of B */
-
     register long iBS = i*BLOCK_SIZE; 
     for (int j = 0; j < N; ++j) 
     {
@@ -93,6 +92,7 @@ static void do_block_fast(int lda, int M, int N, int K, double* A, double* B, do
       }
       C[i+jLda] = cij;
     }
+  }
 }
 
 /* This routine performs a dgemm operation
